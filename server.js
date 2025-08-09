@@ -801,8 +801,8 @@ const startServer = async () => {
     // await initDatabase(); // Removed local database initialization
     server.listen(PORT, HOST, () => {
       console.log(`WebSocket chat server running on http://${HOST}:${PORT}`);
-      console.log(`Visit http://192.168.106.235:${PORT} to test the chat`);
-      console.log(`Server accessible from network at http://192.168.106.235:${PORT}`);
+      console.log(`Visit http://${HOST}:${PORT} to test the chat`);
+      console.log(`Server accessible from network at http://${HOST}:${PORT}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
