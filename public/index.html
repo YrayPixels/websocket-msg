@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .join-form {
+            margin-bottom: 20px;
+        }
+        .join-form input {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .join-form button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .join-form button:hover {
+            background: #0056b3;
+        }
+        .chat-container {
+            display: none;
+        }
+        .chat-header {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            background: white;
+        }
+        .message.own {
+            background: #e3f2fd;
+            text-align: right;
+        }
+        .message.system {
+            background: #fff3cd;
+            text-align: center;
+            font-style: italic;
+        }
+        .message-header {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+        }
+        .message-text {
+            margin-top: 5px;
+        }
+        .message-time {
+            font-size: 10px;
+            color: #999;
+        }
+        .message-form {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+        .message-form input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .message-form button {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message-form button:hover {
+            background: #218838;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-btn {
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .file-input-btn:hover {
+            background: #0056b3;
+        }
+        .file-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: none;
+        }
+        .file-preview img {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 4px;
+        }
+        .file-message {
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+        }
+        .file-message img {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .file-info {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .file-info a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .file-info a:hover {
+            text-decoration: underline;
+        }
+        .upload-progress {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            display: none;
+        }
+        .users-list {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .typing-indicator {
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .encryption-status {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .private-messaging {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .online-users {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .user-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-item:hover {
+            background: #e3f2fd;
+        }
+        .user-item.selected {
+            background: #007bff;
+            color: white;
+        }
+        .private-chat-window {
+            display: none;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .private-chat-header {
+            background: #007bff;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .private-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .private-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .private-message.own {
+            background: #e3f2fd;
+            margin-left: 20%;
+        }
+        .private-message.received {
+            background: #f0f0f0;
+            margin-right: 20%;
+        }
+        .private-input-container {
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: white;
+        }
+        .private-input {
+            width: calc(100% - 80px);
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .private-send-btn {
+            width: 70px;
+            padding: 8px;
+            margin-left: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .private-typing {
+            font-style: italic;
+            color: #666;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .close-chat {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .notification-badge {
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Chat Test</h1>
+        
+        <div class="join-form">
+            <input type="text" id="username" placeholder="Enter your username" required>
+            <input type="text" id="room" placeholder="Enter room name" value="general" required>
+            <button onclick="joinChat()">Join Chat</button>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+                    <div class="chat-header">
+            <h3>Room: <span id="currentRoom"></span></h3>
+            <div class="encryption-status">🔒 End-to-End Encrypted</div>
+            <div class="status" id="status">Disconnected</div>
+        </div>
+            
+            <div class="messages" id="messages"></div>
+            <div class="typing-indicator" id="typingIndicator"></div>
+            
+            <div class="message-form">
+                <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" disabled>
+                    <button class="file-input-btn" onclick="document.getElementById('fileInput').click()" id="fileButton" disabled>📎 File</button>
+                </div>
+                <button onclick="sendMessage()" id="sendButton" disabled>Send</button>
+            </div>
+            
+            <div class="file-preview" id="filePreview">
+                <div>Selected file: <span id="selectedFileName"></span></div>
+                <div id="imagePreview"></div>
+                <button onclick="uploadFile()" id="uploadButton">Upload File</button>
+                <button onclick="cancelFileSelection()">Cancel</button>
+            </div>
+            
+            <div class="upload-progress" id="uploadProgress">
+                <div>Uploading file...</div>
+            </div>
+            
+            <div class="users-list">
+                <h4>Users in room:</h4>
+                <ul id="usersList"></ul>
+            </div>
+            
+            <!-- Private Messaging Section -->
+            <div class="private-messaging">
+                <h4>Private Messaging</h4>
+                <div class="online-users">
+                    <h5>Online Users:</h5>
+                    <div id="onlineUsersList"></div>
+                </div>
+                
+                <!-- Private Chat Window -->
+                <div class="private-chat-window" id="privateChatWindow">
+                    <div class="private-chat-header">
+                        <span id="privateChatWith">Private chat with: </span>
+                        <button class="close-chat" onclick="closePrivateChat()">×</button>
+                    </div>
+                    <div class="private-messages" id="privateMessages"></div>
+                    <div class="private-typing" id="privateTyping"></div>
+                    <div class="private-input-container">
+                        <input type="text" id="privateMessageInput" class="private-input" placeholder="Type your private message..." disabled>
+                        <button onclick="sendPrivateMessage()" id="privateSendBtn" class="private-send-btn" disabled>Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        let currentUser = null;
+        let currentRoom = null;
+        let typingTimer;
+        let privateTypingTimer;
+        let currentPrivateChat = null;
+        let onlineUsers = [];
+        let privateChatHistory = new Map();
+        let unreadMessages = new Map();
+
+        function joinChat() {
+            const username = document.getElementById('username').value.trim();
+            const room = document.getElementById('room').value.trim();
+            
+            if (!username || !room) {
+                alert('Please enter both username and room name');
+                return;
+            }
+            
+            currentUser = username;
+            currentRoom = room;
+            
+            // Connect to socket
+            socket = io();
+            
+            // Set up socket event listeners
+            setupSocketEvents();
+            
+            // Join the room
+            socket.emit('join', { username, room });
+            
+            // Update UI
+            document.querySelector('.join-form').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'block';
+            document.getElementById('currentRoom').textContent = room;
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            document.getElementById('fileInput').disabled = false;
+            document.getElementById('fileButton').disabled = false;
+            document.getElementById('messageInput').focus();
+            
+            // Load online users for private messaging
+            loadOnlineUsers();
+        }
+
+        function setupSocketEvents() {
+            socket.on('connect', () => {
+                updateStatus('connected', 'Connected');
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus('disconnected', 'Disconnected');
+            });
+
+            socket.on('new-message', (message) => {
+                displayMessage(message);
+            });
+
+            socket.on('user-joined', (data) => {
+                displaySystemMessage(data.message);
+            });
+
+            socket.on('user-left', (data) => {
+                displaySystemMessage(data.message);
+            });
+
+            socket.on('room-users', (users) => {
+                updateUsersList(users);
+            });
+
+            socket.on('recent-messages', (messages) => {
+                messages.forEach(message => displayMessage(message));
+            });
+
+            socket.on('encryption-info', (data) => {
+                console.log('Room encryption enabled:', data);
+            });
+
+            socket.on('user-typing', (data) => {
+                handleTypingIndicator(data);
+            });
+
+            socket.on('private-message', (message) => {
+                handleIncomingPrivateMessage(message);
+            });
+
+            socket.on('private-message-sent', (message) => {
+                handleSentPrivateMessage(message);
+            });
+
+            socket.on('private-message-error', (data) => {
+                alert('Private message error: ' + data.error);
+            });
+
+            socket.on('private-typing', (data) => {
+                handlePrivateTypingIndicator(data);
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const text = messageInput.value.trim();
+            
+            if (!text || !socket) return;
+            
+            socket.emit('send-message', { text });
+            messageInput.value = '';
+            stopTyping();
+        }
+
+        function displayMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            if (message.sender.username === currentUser) {
+                messageDiv.className += ' own';
+            }
+            
+            const time = new Date(message.timestamp).toLocaleTimeString();
+            
+            let content = '';
+            if (message.type === 'file') {
+                messageDiv.className += ' file-message';
+                const fileSize = (message.file.size / 1024 / 1024).toFixed(2);
+                
+                if (message.isImage) {
+                    content = `
+                        <div class="message-header">${message.sender.username}</div>
+                        <div class="message-text">Shared an image:</div>
+                        <img src="${message.file.url}" alt="${message.file.originalName}" onclick="openImageModal('${message.file.url}')">
+                        <div class="file-info">
+                            <strong>${message.file.originalName}</strong> (${fileSize} MB)
+                            <a href="/api/download/${message.file.filename}?room=${encodeURIComponent(currentRoom)}&username=${encodeURIComponent(currentUser)}" download>Download</a>
+                        </div>
+                        <div class="message-time">${time}</div>
+                    `;
+                } else {
+                    content = `
+                        <div class="message-header">${message.sender.username}</div>
+                        <div class="message-text">Shared a file:</div>
+                        <div class="file-info">
+                            <strong>${message.file.originalName}</strong> (${fileSize} MB)
+                            <a href="/api/download/${message.file.filename}?room=${encodeURIComponent(currentRoom)}&username=${encodeURIComponent(currentUser)}" download>Download</a>
+                        </div>
+                        <div class="message-time">${time}</div>
+                    `;
+                }
+            } else {
+                content = `
+                    <div class="message-header">${message.sender.username}</div>
+                    <div class="message-text">${escapeHtml(message.text)}</div>
+                    <div class="message-time">${time}</div>
+                `;
+            }
+            
+            messageDiv.innerHTML = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function displaySystemMessage(text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `<div class="message-text">${escapeHtml(text)}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+
+
+        function updateUsersList(users) {
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.textContent = user.username;
+                if (user.username === currentUser) {
+                    li.textContent += ' (you)';
+                    li.style.fontWeight = 'bold';
+                }
+                usersList.appendChild(li);
+            });
+        }
+
+        function updateStatus(className, text) {
+            const status = document.getElementById('status');
+            status.className = `status ${className}`;
+            status.textContent = text;
+        }
+
+        function handleTypingIndicator(data) {
+            const indicator = document.getElementById('typingIndicator');
+            if (data.isTyping) {
+                indicator.textContent = `${data.username} is typing...`;
+            } else {
+                indicator.textContent = '';
+            }
+        }
+
+        function startTyping() {
+            if (socket) {
+                socket.emit('typing-start');
+            }
+        }
+
+        function stopTyping() {
+            if (socket) {
+                socket.emit('typing-stop');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // File handling functions
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file || !currentUser || !currentRoom) {
+                alert('Please select a file and make sure you are connected to a room');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('username', currentUser);
+            formData.append('room', currentRoom);
+            
+            document.getElementById('uploadProgress').style.display = 'block';
+            document.getElementById('filePreview').style.display = 'none';
+            
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('File uploaded successfully:', data);
+                    cancelFileSelection();
+                } else {
+                    alert('Upload failed: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                alert('Upload failed. Please try again.');
+            })
+            .finally(() => {
+                document.getElementById('uploadProgress').style.display = 'none';
+            });
+        }
+        
+        function cancelFileSelection() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('filePreview').style.display = 'none';
+            document.getElementById('imagePreview').innerHTML = '';
+        }
+        
+        function openImageModal(imageUrl) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                border-radius: 8px;
+            `;
+            
+            modal.appendChild(img);
+            modal.onclick = () => document.body.removeChild(modal);
+            document.body.appendChild(modal);
+        }
+        
+        // Set up message input event listeners
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            } else {
+                startTyping();
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(stopTyping, 1000);
+            }
+        });
+        
+        // Set up file input event listener
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('selectedFileName').textContent = file.name;
+                document.getElementById('filePreview').style.display = 'block';
+                
+                // Show image preview if it's an image
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById('imagePreview').innerHTML = `
+                            <img src="${e.target.result}" alt="Preview" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+                        `;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    document.getElementById('imagePreview').innerHTML = '';
+                }
+            }
+        });
+
+        // Set up private message input event listener
+        document.getElementById('privateMessageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendPrivateMessage();
+            } else {
+                startPrivateTyping();
+                clearTimeout(privateTypingTimer);
+                privateTypingTimer = setTimeout(stopPrivateTyping, 1000);
+            }
+        });
+
+        // Private messaging functions
+        function loadOnlineUsers() {
+            if (!currentUser) return;
+            
+            fetch(`/api/online-users?currentUser=${encodeURIComponent(currentUser)}`)
+                .then(response => response.json())
+                .then(users => {
+                    onlineUsers = users;
+                    displayOnlineUsers();
+                })
+                .catch(error => console.error('Error loading online users:', error));
+        }
+
+        function displayOnlineUsers() {
+            const container = document.getElementById('onlineUsersList');
+            container.innerHTML = '';
+            
+            onlineUsers.forEach(user => {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'user-item';
+                userDiv.onclick = () => openPrivateChat(user.username);
+                
+                const unreadCount = unreadMessages.get(user.username) || 0;
+                const badge = unreadCount > 0 ? `<span class="notification-badge">${unreadCount}</span>` : '';
+                
+                userDiv.innerHTML = `
+                    <span>${user.username} (${user.room})</span>
+                    <span>${badge}</span>
+                `;
+                container.appendChild(userDiv);
+            });
+        }
+
+        function openPrivateChat(username) {
+            currentPrivateChat = username;
+            document.getElementById('privateChatWith').textContent = `Private chat with: ${username}`;
+            document.getElementById('privateChatWindow').style.display = 'block';
+            document.getElementById('privateMessageInput').disabled = false;
+            document.getElementById('privateSendBtn').disabled = false;
+            
+            // Clear unread messages for this user
+            unreadMessages.delete(username);
+            displayOnlineUsers();
+            
+            // Load chat history
+            loadPrivateChatHistory(username);
+        }
+
+        function closePrivateChat() {
+            currentPrivateChat = null;
+            document.getElementById('privateChatWindow').style.display = 'none';
+            document.getElementById('privateMessageInput').disabled = true;
+            document.getElementById('privateSendBtn').disabled = true;
+            document.getElementById('privateMessages').innerHTML = '';
+        }
+
+        function loadPrivateChatHistory(username) {
+            const user1 = currentUser;
+            const user2 = username;
+            
+            fetch(`/api/private-chat/${user1}/${user2}?requestingUser=${encodeURIComponent(currentUser)}`)
+                .then(response => response.json())
+                .then(messages => {
+                    privateChatHistory.set(username, messages);
+                    displayPrivateMessages(messages);
+                })
+                .catch(error => console.error('Error loading chat history:', error));
+        }
+
+        function displayPrivateMessages(messages) {
+            const container = document.getElementById('privateMessages');
+            container.innerHTML = '';
+            
+            messages.forEach(message => {
+                displaySinglePrivateMessage(message);
+            });
+            
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function displaySinglePrivateMessage(message) {
+            const container = document.getElementById('privateMessages');
+            const messageDiv = document.createElement('div');
+            
+            const isOwn = message.sender.username === currentUser;
+            messageDiv.className = `private-message ${isOwn ? 'own' : 'received'}`;
+            
+            const time = new Date(message.timestamp).toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div style="font-weight: bold; font-size: 12px; color: #666;">
+                    ${message.sender.username}
+                </div>
+                <div style="margin: 5px 0;">
+                    ${escapeHtml(message.text)}
+                </div>
+                <div style="font-size: 10px; color: #999;">
+                    ${time}
+                </div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendPrivateMessage() {
+            const input = document.getElementById('privateMessageInput');
+            const text = input.value.trim();
+            
+            if (!text || !currentPrivateChat || !socket) return;
+            
+            socket.emit('private-message', {
+                recipientUsername: currentPrivateChat,
+                text: text
+            });
+            
+            input.value = '';
+            stopPrivateTyping();
+        }
+
+        function handleIncomingPrivateMessage(message) {
+            // Update chat history
+            const sender = message.sender.username;
+            if (!privateChatHistory.has(sender)) {
+                privateChatHistory.set(sender, []);
+            }
+            privateChatHistory.get(sender).push(message);
+            
+            // If chat is open with this user, display the message
+            if (currentPrivateChat === sender) {
+                displaySinglePrivateMessage(message);
+            } else {
+                // Add to unread count
+                const current = unreadMessages.get(sender) || 0;
+                unreadMessages.set(sender, current + 1);
+                displayOnlineUsers();
+                
+                // Show notification
+                showNotification(`New private message from ${sender}`);
+            }
+            
+            // Refresh online users list to show any changes
+            loadOnlineUsers();
+        }
+
+        function handleSentPrivateMessage(message) {
+            // Update chat history
+            const recipient = message.recipient.username;
+            if (!privateChatHistory.has(recipient)) {
+                privateChatHistory.set(recipient, []);
+            }
+            privateChatHistory.get(recipient).push(message);
+            
+            // If chat is open with this user, display the message
+            if (currentPrivateChat === recipient) {
+                displaySinglePrivateMessage(message);
+            }
+        }
+
+        function startPrivateTyping() {
+            if (socket && currentPrivateChat) {
+                socket.emit('private-typing-start', {
+                    recipientUsername: currentPrivateChat
+                });
+            }
+        }
+
+        function stopPrivateTyping() {
+            if (socket && currentPrivateChat) {
+                socket.emit('private-typing-stop', {
+                    recipientUsername: currentPrivateChat
+                });
+            }
+        }
+
+        function handlePrivateTypingIndicator(data) {
+            if (currentPrivateChat === data.from) {
+                const indicator = document.getElementById('privateTyping');
+                if (data.isTyping) {
+                    indicator.textContent = `${data.from} is typing...`;
+                } else {
+                    indicator.textContent = '';
+                }
+            }
+        }
+
+        function showNotification(message) {
+            // Simple alert for now - could be enhanced with browser notifications
+            console.log('Notification:', message);
+        }
+
+        // Refresh online users periodically
+        setInterval(() => {
+            if (currentUser) {
+                loadOnlineUsers();
+            }
+        }, 30000); // Every 30 seconds
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    </script>
+</body>
+</html> 
